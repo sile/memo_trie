@@ -10,10 +10,14 @@
          new/1,
          is_trie/1,
          is_empty/1,
+         size/1,
          store/3,
          find/2,
          erase/2,
+         foldl/3,
+         foldr/3,
          from_list/2,
+         to_list/1,
 
          memo_fun_none/1
         ]).
@@ -24,6 +28,7 @@
               key_component/0,
               value/0,
               make_opt/0, make_opts/0,
+              fold_fun/0,
               memo/0,
               memo_event/0,
               memo_fun/0
@@ -74,6 +79,7 @@
 -type make_opt()  :: {memo_fun, memo_fun()} % default: memo_fun_none/1
                    | {children_module, memo_trie_children:children_module()}. %  default: memo_trie_children_gb_trees
 
+-type fold_fun() :: fun ((key(), value(), Acc::term()) -> NextAcc::term()).
 %%----------------------------------------------------------------------------------------------------------------------
 %% Exported Functions
 %%----------------------------------------------------------------------------------------------------------------------
@@ -89,12 +95,17 @@ new(Options) ->
         root = empty_node(Opts)
        }.
 
--spec is_trie(trie() | term()) -> boolean().
+%% @doc Tests if `Value' is a trie and returns `true' if so and `false' otherwise
+-spec is_trie(Value :: term()) -> boolean().
 is_trie(#?TRIE{}) -> true;
 is_trie(_)        -> false.
 
 -spec is_empty(trie()) -> boolean().
 is_empty(#?TRIE{root = Root}) -> is_empty_node(Root).
+
+-spec size(trie()) -> non_neg_integer().
+size(Trie) ->
+    foldl(fun (_, _, Size) -> Size + 1 end, 0, Trie).
 
 -spec store(key(), value(), trie()) -> trie().
 store(Key, Value, Trie) ->
@@ -116,6 +127,24 @@ from_list(Options, List) ->
       fun ({Key, Value}, Acc) -> store(Key, Value, Acc) end,
       new(Options),
       List).
+
+-spec to_list(trie()) -> [{key(), value()}].
+to_list(Trie) ->
+    foldr(fun (Key, Value, Acc) -> [{Key, Value} | Acc] end,
+          [],
+          Trie).
+
+-spec foldl(fold_fun(), Initial, trie()) -> Result when
+      Initial :: term(),
+      Result  :: term().
+foldl(Fun, Initial, Trie) ->
+    foldl_node([], Fun, Initial, Trie#?TRIE.root, Trie#?TRIE.opts).
+
+-spec foldr(fold_fun(), Initial, trie()) -> Result when
+      Initial :: term(),
+      Result  :: term().
+foldr(Fun, Initial, Trie) ->
+    foldr_node([], Fun, Initial, Trie#?TRIE.root, Trie#?TRIE.opts).
 
 -spec memo_fun_none(memo_event()) -> none.
 memo_fun_none(_) ->
@@ -212,3 +241,28 @@ get_children({node, _, _, Children}) -> Children.
 
 -spec get_leaf(trie_node()) -> leaf().
 get_leaf({node, _, Leaf, _}) -> Leaf.
+
+-spec foldl_node(key(), fold_fun(), Acc, trie_node(), #opt{}) -> Acc when Acc :: term().
+foldl_node(Key, Fun, Acc0, {node, _, MaybeValue, Children}, Options) ->
+    Acc1 = case MaybeValue of
+               error       -> Acc0;
+               {ok, Value} -> Fun(Key, Value, Acc0)
+           end,
+    lists:foldl(fun ({Last, Child}, Acc2) ->
+                        foldl_node(Key ++ [Last], Fun, Acc2, Child, Options)
+                end,
+                Acc1,
+                ?CHILDREN(Options):to_list(Children)).
+
+-spec foldr_node(key(), fold_fun(), Acc, trie_node(), #opt{}) -> Acc when Acc :: term().
+foldr_node(Key, Fun, Acc0, {node, _, MaybeValue, Children}, Options) ->
+    Acc2 =
+        lists:foldr(fun ({Last, Child}, Acc1) ->
+                            foldr_node(Key ++ [Last], Fun, Acc1, Child, Options)
+                    end,
+                    Acc0,
+                    ?CHILDREN(Options):to_list(Children)),
+    case MaybeValue of
+        error       -> Acc2;
+        {ok, Value} -> Fun(Key, Value, Acc2)
+    end.
