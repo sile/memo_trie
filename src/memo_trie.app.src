@@ -1,0 +1,12 @@
+%% vim: set ft=erlang : -*- erlang -*-
+{application, memo_trie,
+ [
+  {description, "An Erlang memo_trie library"},
+  {vsn, git},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.
