@@ -63,7 +63,8 @@
         }).
 
 -type trie() :: trie(key(), value()).
--opaque trie(_Key, _Value) :: #?TRIE{}.
+-type trie(_Key, _Value) :: #?TRIE{}.
+%% -opaque trie(_Key, _Value) :: #?TRIE{}. % dialyzer(R16B03) says 'Polymorphic opaque types not supported yet'
 
 -type key() :: [key_component()].
 -type key_component() :: term().
