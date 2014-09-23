@@ -169,9 +169,9 @@ shuffle(List) ->
     [E || {_, E} <- lists:ukeysort(1, [{random:uniform(), E} || E <- List])].
 
 -spec memo_sum(memo_trie:memo_event()) -> memo_trie:memo().
-memo_sum({insert_value, V,        Node}) -> memo_trie:get_memo(Node) + V;
-memo_sum({update_value, {V0, V1}, Node}) -> memo_trie:get_memo(Node) + (V1 - V0);
-memo_sum({delete_value, V,        Node}) -> memo_trie:get_memo(Node) - V;
-memo_sum({insert_child, {_, C},      Node}) -> memo_trie:get_memo(Node) + memo_trie:get_memo(C);
-memo_sum({update_child, {_, C0, C1}, Node}) -> memo_trie:get_memo(Node) + (memo_trie:get_memo(C1) - memo_trie:get_memo(C0));
-memo_sum({delete_child, {_, C},      Node}) -> memo_trie:get_memo(Node) - memo_trie:get_memo(C).
+memo_sum({insert_value, V,        Memo}) -> Memo + V;
+memo_sum({update_value, {V0, V1}, Memo}) -> Memo + (V1 - V0);
+memo_sum({delete_value, V,        Memo}) -> Memo - V;
+memo_sum({insert_child, {_, C},      Memo}) -> Memo + C;
+memo_sum({update_child, {_, C0, C1}, Memo}) -> Memo + C1 - C0;
+memo_sum({delete_child, {_, C},      Memo}) -> Memo - C.
