@@ -8,6 +8,7 @@
 %%----------------------------------------------------------------------------------------------------------------------
 -export([
          new/1,
+         subtrie/2,
          is_trie/1,
          is_empty/1,
          size/1,
@@ -105,6 +106,13 @@ new(Options) ->
         opts = Opts,
         root = empty_node(Opts)
        }.
+
+-spec subtrie(key(), trie()) -> {ok, trie()} | error.
+subtrie(Key, Trie) ->
+    case find_node(Key, Trie) of
+        error      -> error;
+        {ok, Node} -> {ok, Trie#?TRIE{root = Node}}
+    end.
 
 %% @doc Tests if `Value' is a trie and returns `true' if so and `false' otherwise
 -spec is_trie(Value :: term()) -> boolean().
