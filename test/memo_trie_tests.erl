@@ -130,9 +130,48 @@ from_list_test_() ->
       end}
     ].
 
+memo_test_() ->
+    [
+     {"Sum memorize",
+      fun () ->
+              Trie0 =
+                  memo_trie:new([
+                                 {memo_fun, fun memo_sum/1},
+                                 {memo_empty, 0}
+                                ]),
+
+              ?assertEqual(0, memo_trie:get_memo(memo_trie:get_root_node(Trie0))),
+
+              Trie1 = memo_trie:store("abc", 3, Trie0),
+              ?assertEqual(3, memo_trie:get_memo(memo_trie:get_root_node(Trie1))),
+
+              Trie2 = memo_trie:store("ab",  2, Trie1),
+              Trie3 = memo_trie:store("ac",  1, Trie2),
+              Trie4 = memo_trie:store("123", 5, Trie3),
+              ?assertEqual(11, memo_trie:get_memo(memo_trie:get_root_node(Trie4))),
+              ?assertEqual(6, memo_trie:get_memo(element(2, memo_trie:find_node("a", Trie4)))),
+
+              Trie5 = memo_trie:store("abc", 2, Trie4),
+              ?assertEqual(10, memo_trie:get_memo(memo_trie:get_root_node(Trie5))),
+              ?assertEqual(5, memo_trie:get_memo(element(2, memo_trie:find_node("a", Trie5)))),
+
+              Trie6 = memo_trie:erase("abc", Trie5),
+              ?assertEqual(8, memo_trie:get_memo(memo_trie:get_root_node(Trie6))),
+              ?assertEqual(3, memo_trie:get_memo(element(2, memo_trie:find_node("a", Trie6))))
+      end}
+    ].
+
 %%----------------------------------------------------------------------------------------------------------------------
 %% Internal Functions
 %%--------------------------------------------------------------------------------------------------------------------
 -spec shuffle([Element]) -> [Element] when Element :: term().
 shuffle(List) ->
     [E || {_, E} <- lists:ukeysort(1, [{random:uniform(), E} || E <- List])].
+
+-spec memo_sum(memo_trie:memo_event()) -> memo_trie:memo().
+memo_sum({insert_value, V,        Node}) -> memo_trie:get_memo(Node) + V;
+memo_sum({update_value, {V0, V1}, Node}) -> memo_trie:get_memo(Node) + (V1 - V0);
+memo_sum({delete_value, V,        Node}) -> memo_trie:get_memo(Node) - V;
+memo_sum({insert_child, {_, C},      Node}) -> memo_trie:get_memo(Node) + memo_trie:get_memo(C);
+memo_sum({update_child, {_, C0, C1}, Node}) -> memo_trie:get_memo(Node) + (memo_trie:get_memo(C1) - memo_trie:get_memo(C0));
+memo_sum({delete_child, {_, C},      Node}) -> memo_trie:get_memo(Node) - memo_trie:get_memo(C).
