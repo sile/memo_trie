@@ -1,4 +1,4 @@
-%% @copyright 2013-2014, Takeru Ohta <phjgt308@gmail.com>
+%% @copyright 2014, Takeru Ohta <phjgt308@gmail.com>
 %%
 %% TODO: doc
 -module(memo_trie).
@@ -18,6 +18,13 @@
          foldr/3,
          from_list/2,
          to_list/1,
+
+         get_root_node/1,
+         find_node/2,
+         children_to_list/2,
+         get_memo/1,
+         get_value/1, get_value/2,
+         get_children/1,
 
          memo_fun_none/1
         ]).
@@ -43,6 +50,7 @@
 -record(opt,
         {
           memo_fun        :: memo_fun(),
+          memo_empty      :: memo(),
           children_module :: memo_trie_children:children_module()
         }).
 
@@ -64,19 +72,20 @@
 -type memo_fun() :: fun ((memo_event()) -> memo()). % TODO: associative云々
 
 -type memo_event() :: {insert_value, value(), trie_node()}
-                    | {update_value, value(), trie_node()}
+                    | {update_value, {value(), value()}, trie_node()}
                     | {delete_value, value(), trie_node()}
                     | {insert_child, {key_component(), trie_node()}, trie_node()}
-                    | {update_child, {key_component(), trie_node()}, trie_node()}
+                    | {update_child, {key_component(), trie_node(), trie_node()}, trie_node()}
                     | {delete_child, {key_component(), trie_node()}, trie_node()}.
 
--type trie_node() :: {node, error | {ok, memo()}, leaf(), children()}.
+-type trie_node() :: {node, memo(), leaf(), children()}.
 
 -type leaf() :: error | {ok, value()}.
 -type children() :: gb_trees:tree(key_component(), trie_node()).
 
 -type make_opts() :: [make_opt()].
 -type make_opt()  :: {memo_fun, memo_fun()} % default: memo_fun_none/1
+                   | {memo_empty, memo()} % default: undefined
                    | {children_module, memo_trie_children:children_module()}. %  default: memo_trie_children_gb_trees
 
 -type fold_fun() :: fun ((key(), value(), Acc::term()) -> NextAcc::term()).
@@ -88,6 +97,7 @@ new(Options) ->
     Opts =
         #opt{
            memo_fun        = proplists:get_value(memo_fun, Options, fun ?MODULE:memo_fun_none/1),
+           memo_empty      = proplists:get_value(memo_empty, Options, undefined),
            children_module = proplists:get_value(children_module, Options, memo_trie_children_gb_trees)
           },
     #?TRIE{
@@ -101,7 +111,7 @@ is_trie(#?TRIE{}) -> true;
 is_trie(_)        -> false.
 
 -spec is_empty(trie()) -> boolean().
-is_empty(#?TRIE{root = Root}) -> is_empty_node(Root).
+is_empty(#?TRIE{root = Root, opts = Opts}) -> is_empty_node(Root, Opts).
 
 -spec size(trie()) -> non_neg_integer().
 size(Trie) ->
@@ -146,6 +156,34 @@ foldl(Fun, Initial, Trie) ->
 foldr(Fun, Initial, Trie) ->
     foldr_node([], Fun, Initial, Trie#?TRIE.root, Trie#?TRIE.opts).
 
+-spec get_root_node(trie()) -> trie_node().
+get_root_node(Trie) ->
+    Trie#?TRIE.root.
+
+-spec find_node(key(), trie()) -> {ok, trie_node()} | error.
+find_node(Key, Trie) ->
+    find_node(Key, Trie#?TRIE.root, Trie#?TRIE.opts).
+
+-spec children_to_list(children(), trie()) -> [{key_component(), trie_node()}].
+children_to_list(Children, Trie) ->
+    ?CHILDREN(Trie#?TRIE.opts):to_list(Children).
+
+-spec get_memo(trie_node()) -> memo().
+get_memo({node, Memo, _, _}) -> Memo.
+
+-spec get_value(trie_node()) -> {ok, value()} | error.
+get_value({node, _, MaybeValue, _}) -> MaybeValue. % XXX: name
+
+-spec get_value(trie_node(), value()) -> value().
+get_value(Node, Default) ->
+    case get_value(Node) of
+        error       -> Default;
+        {ok, Value} -> Value
+    end.
+
+-spec get_children(trie_node()) -> children().
+get_children({node, _, _, Children}) -> Children.
+
 -spec memo_fun_none(memo_event()) -> none.
 memo_fun_none(_) ->
     none.
@@ -153,6 +191,15 @@ memo_fun_none(_) ->
 %%----------------------------------------------------------------------------------------------------------------------
 %% Internal Functions
 %%----------------------------------------------------------------------------------------------------------------------
+-spec find_node(key(), trie_node(), #opt{}) -> {ok, trie_node()} | error.
+find_node([], Node, _Options) ->
+    {ok, Node};
+find_node([Head | Tail], Node, Options) ->
+    case ?CHILDREN(Options):find(Head, get_children(Node)) of
+        error       -> error;
+        {ok, Child} -> find_node(Tail, Child, Options)
+    end.
+
 -spec find_leaf(key(), trie_node(), #opt{}) -> leaf().
 find_leaf([], {node, _, Leaf, _}, _) -> Leaf;
 find_leaf([Head | Tail], Node, Options)    ->
@@ -169,14 +216,15 @@ erase_node([Head | Tail], Node, Options) ->
         error        -> Node;
         {ok, Child0} ->
             Child1 = erase_node(Tail, Child0, Options),
-            case is_empty_node(Child1) of
-                false -> update_child(Head, Child1, Node, Options);
+            case is_empty_node(Child1, Options) of
+                false -> update_child(Head, Child0, Child1, Node, Options);
                 true  -> delete_child(Head, Node, Options)
             end
     end.
 
--spec is_empty_node(trie_node()) -> boolean().
-is_empty_node({node, Memo, _, _}) -> Memo =:= error.
+-spec is_empty_node(trie_node(), #opt{}) -> boolean().
+is_empty_node({node, _, Value, Children}, Options) ->
+    Value =:= error andalso ?CHILDREN(Options):is_empty(Children).
 
 -spec delete_child(key_component(), trie_node(), #opt{}) -> trie_node().
 delete_child(Key, Node, Options) ->
@@ -198,7 +246,7 @@ store_node([Head | Tail], Value, Node, Options) ->
             insert_child(Head, Child, Node, Options);
         {ok, Child0} ->
             Child1 = store_node(Tail, Value, Child0, Options),
-            update_child(Head, Child1, Node, Options)
+            update_child(Head, Child0, Child1, Node, Options)
     end.
 
 -spec delete_leaf(trie_node(), #opt{}) -> trie_node().
@@ -217,8 +265,8 @@ delete_leaf(Node, Options) ->
 -spec store_value(value(), trie_node(), #opt{}) -> trie_node().
 store_value(Value, Node, Options) ->
     Memo = case get_leaf(Node) of
-               error   -> (Options#opt.memo_fun)({update_value, Value, Node});
-               {ok, _} -> (Options#opt.memo_fun)({insert_value, Value, Node})
+               error     -> (Options#opt.memo_fun)({insert_value, Value, Node});
+               {ok, Old} -> (Options#opt.memo_fun)({update_value, {Old, Value}, Node})
            end,
     {node, Memo, {ok, Value}, get_children(Node)}.
 
@@ -227,17 +275,14 @@ insert_child(Key, Child, Node, Options) ->
     Memo = (Options#opt.memo_fun)({insert_child, {Key, Child}, Node}),
     {node, Memo, get_leaf(Node), ?CHILDREN(Options):store(Key, Child, get_children(Node))}.
 
--spec update_child(key_component(), trie_node(), trie_node(), #opt{}) -> trie_node().
-update_child(Key, Child, Node, Options) ->
-    Memo = (Options#opt.memo_fun)({update_child, {Key, Child}, Node}),
+-spec update_child(key_component(), trie_node(), trie_node(), trie_node(), #opt{}) -> trie_node().
+update_child(Key, Old, Child, Node, Options) ->
+    Memo = (Options#opt.memo_fun)({update_child, {Key, Old, Child}, Node}),
     {node, Memo, get_leaf(Node), ?CHILDREN(Options):store(Key, Child, get_children(Node))}.
 
 -spec empty_node(#opt{}) -> trie_node().
 empty_node(Opts) ->
-    {node, error, error, ?CHILDREN(Opts):empty()}.
-
--spec get_children(trie_node()) -> children().
-get_children({node, _, _, Children}) -> Children.
+    {node, Opts#opt.memo_empty, error, ?CHILDREN(Opts):empty()}.
 
 -spec get_leaf(trie_node()) -> leaf().
 get_leaf({node, _, Leaf, _}) -> Leaf.
