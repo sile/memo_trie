@@ -174,7 +174,7 @@ get_root_node(Trie) ->
 find_node(Key, Trie) ->
     find_node(Key, Trie#?TRIE.root, Trie#?TRIE.opts).
 
--spec find_memo(key(), trie()) -> {ok, trie_node()} | error.
+-spec find_memo(key(), trie()) -> {ok, memo()} | error.
 find_memo(Key, Trie) ->
     case find_node(Key, Trie) of
         error      -> error;
