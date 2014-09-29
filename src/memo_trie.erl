@@ -1,6 +1,6 @@
 %% @copyright 2014, Takeru Ohta <phjgt308@gmail.com>
 %%
-%% TODO: doc
+%% @doc 各ノードが任意のメモ情報を保持するトライ木の実装
 -module(memo_trie).
 
 %%----------------------------------------------------------------------------------------------------------------------
@@ -28,11 +28,12 @@
          get_value/1, get_value/2,
          get_children/1,
 
-         memo_fun_none/1
+         memo_fun_identity/1
         ]).
 
 -export_type([
               trie/0, trie/2,
+              trie_node/0,
               key/0,
               key_component/0,
               value/0,
@@ -67,39 +68,41 @@
 %% -opaque trie(_Key, _Value) :: #?TRIE{}. % dialyzer(R16B03) says 'Polymorphic opaque types not supported yet'
 
 -type key() :: [key_component()].
--type key_component() :: term().
+-type key_component() :: term().  % XXX: wrong name
 -type value() :: term().
 
 -type memo() :: term().
 
--type memo_fun() :: fun ((memo_event()) -> memo()). % TODO: associative云々
+-type memo_fun() :: fun ((memo_event()) -> memo()).
 
--type memo_event() :: {insert_value, value(), memo()}
-                    | {update_value, {value(), value()}, memo()}
-                    | {delete_value, value(), memo()}
-                    | {insert_child, {key_component(), memo()}, memo()}
-                    | {update_child, {key_component(), memo(), memo()}, memo()}
-                    | {delete_child, {key_component(), memo()}, memo()}.
+-type memo_event() :: {insert_value, NewValue::value(),                      NodeMemo::memo()}
+                    | {update_value, {OldValue::value(), NewValue::value()}, NodeMemo::memo()}
+                    | {delete_value, OldValue::value(),                      NodeMemo::memo()}
+                    | {insert_child, {key_component(), NewChildMemo::memo()},                       NodeMemo::memo()}
+                    | {update_child, {key_component(), OldChildMemo::memo(), NewChildMemo::memo()}, NodeMemo::memo()}
+                    | {delete_child, {key_component(), OldChildMemo::memo()},                       NodeMemo::memo()}.
 
 -type trie_node() :: {node, memo(), leaf(), children()}.
 
 -type leaf() :: error | {ok, value()}.
--type children() :: gb_trees:tree(key_component(), trie_node()).
+-type children() :: memo_trie_children:state().
 
 -type make_opts() :: [make_opt()].
--type make_opt()  :: {memo_fun, memo_fun()} % default: memo_fun_none/1
+-type make_opt()  :: {memo_fun, memo_fun()} % default: memo_fun_identity/1
                    | {memo_empty, memo()} % default: undefined
                    | {children_module, memo_trie_children:children_module()}. %  default: memo_trie_children_gb_trees TODO: changed to identity function
 
 -type fold_fun() :: fun ((key(), value(), Acc::term()) -> NextAcc::term()).
+
 %%----------------------------------------------------------------------------------------------------------------------
 %% Exported Functions
 %%----------------------------------------------------------------------------------------------------------------------
+%% @doc 新しいトライ木を生成する
 -spec new(make_opts()) -> trie().
 new(Options) ->
     Opts =
         #opt{
-           memo_fun        = proplists:get_value(memo_fun, Options, fun ?MODULE:memo_fun_none/1),
+           memo_fun        = proplists:get_value(memo_fun, Options, fun ?MODULE:memo_fun_identity/1),
            memo_empty      = proplists:get_value(memo_empty, Options, undefined),
            children_module = proplists:get_value(children_module, Options, memo_trie_children_gb_trees)
           },
@@ -108,6 +111,7 @@ new(Options) ->
         root = empty_node(Opts)
        }.
 
+%% @doc `Trie'内の`Key'に対応する地点のサブトライ木を取り出す
 -spec subtrie(key(), trie()) -> {ok, trie()} | error.
 subtrie(Key, Trie) ->
     case find_node(Key, Trie) of
@@ -120,27 +124,35 @@ subtrie(Key, Trie) ->
 is_trie(#?TRIE{}) -> true;
 is_trie(_)        -> false.
 
+%% @doc トライ木が空かどうかを判定する
 -spec is_empty(trie()) -> boolean().
 is_empty(#?TRIE{root = Root, opts = Opts}) -> is_empty_node(Root, Opts).
 
+%% @doc トライ木に格納されている要素の数を取得する
+%%
+%% この関数は、要素数に比例した(線形の)処理オーダーを要するので注意が必要
 -spec size(trie()) -> non_neg_integer().
 size(Trie) ->
     foldl(fun (_, _, Size) -> Size + 1 end, 0, Trie).
 
+%% @doc `Trie'内の`Key'に対応する地点に`Value'を格納する
 -spec store(key(), value(), trie()) -> trie().
 store(Key, Value, Trie) ->
     Root = store_node(Key, Value, Trie#?TRIE.root, Trie#?TRIE.opts),
     Trie#?TRIE{root = Root}.
 
+%% @doc `Trie'内の`Key'に対応するノードの値を検索する
 -spec find(key(), trie()) -> {ok, value()} | error.
 find(Key, Trie) ->
     find_leaf(Key, Trie#?TRIE.root, Trie#?TRIE.opts).
 
+%% @doc `Trie'内の`Key'に対応するノードの値を削除する
 -spec erase(key(), trie()) -> trie().
 erase(Key, Trie) ->
     Root = erase_node(Key, Trie#?TRIE.root, Trie#?TRIE.opts),
     Trie#?TRIE{root = Root}.
 
+%% @doc 連想リストからトライ木を生成する
 -spec from_list(make_opts(), [{key(), value()}]) -> trie().
 from_list(Options, List) ->
     lists:foldl(
@@ -148,32 +160,38 @@ from_list(Options, List) ->
       new(Options),
       List).
 
+%% @doc トライ木から連想リストを生成する
 -spec to_list(trie()) -> [{key(), value()}].
 to_list(Trie) ->
     foldr(fun (Key, Value, Acc) -> [{Key, Value} | Acc] end,
           [],
           Trie).
 
+%% @doc トライ木内の要素を左端から順番に畳み込む
 -spec foldl(fold_fun(), Initial, trie()) -> Result when
       Initial :: term(),
       Result  :: term().
 foldl(Fun, Initial, Trie) ->
     foldl_node([], Fun, Initial, Trie#?TRIE.root, Trie#?TRIE.opts).
 
+%% @doc トライ木内の要素を右端から順番に畳み込む
 -spec foldr(fold_fun(), Initial, trie()) -> Result when
       Initial :: term(),
       Result  :: term().
 foldr(Fun, Initial, Trie) ->
     foldr_node([], Fun, Initial, Trie#?TRIE.root, Trie#?TRIE.opts).
 
+%% @doc 木のルートノードを取得する
 -spec get_root_node(trie()) -> trie_node().
 get_root_node(Trie) ->
     Trie#?TRIE.root.
 
+%% @doc `Trie'内の`Key'に対応するノードを検索する
 -spec find_node(key(), trie()) -> {ok, trie_node()} | error.
 find_node(Key, Trie) ->
     find_node(Key, Trie#?TRIE.root, Trie#?TRIE.opts).
 
+%% @doc `Trie'内の`Key'に対応するノードのメモ情報を検索する
 -spec find_memo(key(), trie()) -> {ok, memo()} | error.
 find_memo(Key, Trie) ->
     case find_node(Key, Trie) of
@@ -181,16 +199,17 @@ find_memo(Key, Trie) ->
         {ok, Node} -> {ok, get_memo(Node)}
     end.
 
--spec children_to_list(children(), trie()) -> [{key_component(), trie_node()}].
-children_to_list(Children, Trie) ->
-    ?CHILDREN(Trie#?TRIE.opts):to_list(Children).
-
+%% @doc ノードからメモ情報を取り出す
 -spec get_memo(trie_node()) -> memo().
 get_memo({node, Memo, _, _}) -> Memo.
 
--spec get_value(trie_node()) -> {ok, value()} | error.
-get_value({node, _, MaybeValue, _}) -> MaybeValue. % XXX: name
+%% @doc ノードに格納されている値を取り出す
+-spec get_value(trie_node()) -> {ok, value()} | error. % XXX: name
+get_value({node, _, MaybeValue, _}) -> MaybeValue.
 
+%% @doc ノードに格納されている値を取り出す
+%%
+%% そのような値が存在しない場合は、代わりに`Default'が返される
 -spec get_value(trie_node(), value()) -> value().
 get_value(Node, Default) ->
     case get_value(Node) of
@@ -198,12 +217,21 @@ get_value(Node, Default) ->
         {ok, Value} -> Value
     end.
 
+%% @doc ノードの子ノード群を取得する
 -spec get_children(trie_node()) -> children().
 get_children({node, _, _, Children}) -> Children.
 
--spec memo_fun_none(memo_event()) -> none.
-memo_fun_none(_) ->
-    none.
+%% @doc 子ノード群を連想リスト形式に変換する
+-spec children_to_list(children(), trie()) -> [{key_component(), trie_node()}].
+children_to_list(Children, Trie) ->
+    ?CHILDREN(Trie#?TRIE.opts):to_list(Children).
+
+%% @doc デフォルトで使用されるメモ関数
+%%
+%% 既存のメモ値をそのまま返す
+-spec memo_fun_identity(memo_event()) -> memo().
+memo_fun_identity({_, _, Memo}) ->
+    Memo.
 
 %%----------------------------------------------------------------------------------------------------------------------
 %% Internal Functions

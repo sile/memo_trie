@@ -1,6 +1,6 @@
-%% @copyright 2013-2014, Takeru Ohta <phjgt308@gmail.com>
+%% @copyright 2014, Takeru Ohta <phjgt308@gmail.com>
 %%
-%% TODO: doc
+%% @doc ノードの子供群管理用モジュール用のインタフェース定義
 -module(memo_trie_children).
 
 %%----------------------------------------------------------------------------------------------------------------------

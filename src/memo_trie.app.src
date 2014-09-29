@@ -1,7 +1,7 @@
 %% vim: set ft=erlang : -*- erlang -*-
 {application, memo_trie,
  [
-  {description, "An Erlang memo_trie library"},
+  {description, "A Memorized Trie"},
   {vsn, git},
   {registered, []},
   {applications, [
