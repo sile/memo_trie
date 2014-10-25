@@ -17,6 +17,8 @@
          erase/2,
          foldl/3,
          foldr/3,
+         foldl_node/3,
+         foldr_node/3,
          from_list/2,
          to_list/1,
 
@@ -39,6 +41,7 @@
               value/0,
               make_opt/0, make_opts/0,
               fold_fun/0,
+              fold_node_fun/0,
               memo/0,
               memo_event/0,
               memo_fun/0
@@ -93,6 +96,7 @@
                    | {children_module, memo_trie_children:children_module()}. %  default: memo_trie_children_gb_trees TODO: changed to identity function
 
 -type fold_fun() :: fun ((key(), value(), Acc::term()) -> NextAcc::term()).
+-type fold_node_fun() :: fun ((key(), trie_node(), Acc::term()) -> NextAcc::term()).
 
 %%----------------------------------------------------------------------------------------------------------------------
 %% Exported Functions
@@ -167,18 +171,40 @@ to_list(Trie) ->
           [],
           Trie).
 
-%% @doc トライ木内の要素を左端から順番に畳み込む
--spec foldl(fold_fun(), Initial, trie()) -> Result when
+%% @doc トライ木内の要素をキーが小さい順に畳み込む
+-spec foldl(Fun, Initial, trie()) -> Result when
+      Fun     :: fold_fun(),
       Initial :: term(),
       Result  :: term().
-foldl(Fun, Initial, Trie) ->
+foldl(Fun0, Initial, Trie) ->
+    Fun1 = fun (_,   {node, _, error, _},       Acc) -> Acc;
+               (Key, {node, _, {ok, Value}, _}, Acc) -> Fun0(Key, Value, Acc)
+           end,
+    foldl_node([], Fun1, Initial, Trie#?TRIE.root, Trie#?TRIE.opts).
+
+%% @doc トライ木内の要素をキーが大きい順に畳み込む
+-spec foldr(Fun, Initial, trie()) -> Result when
+      Fun     :: fold_fun(),
+      Initial :: term(),
+      Result  :: term().
+foldr(Fun0, Initial, Trie) ->
+    Fun1 = fun (_,   {node, _, error, _},       Acc) -> Acc;
+               (Key, {node, _, {ok, Value}, _}, Acc) -> Fun0(Key, Value, Acc)
+           end,
+    foldr_node([], Fun1, Initial, Trie#?TRIE.root, Trie#?TRIE.opts).
+
+%% @doc トライ木内のノードをキーが小さい順に畳み込む
+-spec foldl_node(fold_node_fun(), Initial, trie()) -> Result when
+      Initial :: term(),
+      Result  :: term().
+foldl_node(Fun, Initial, Trie) ->
     foldl_node([], Fun, Initial, Trie#?TRIE.root, Trie#?TRIE.opts).
 
-%% @doc トライ木内の要素を右端から順番に畳み込む
--spec foldr(fold_fun(), Initial, trie()) -> Result when
+%% @doc トライ木内のノードをキーが大きい順に畳み込む
+-spec foldr_node(fold_node_fun(), Initial, trie()) -> Result when
       Initial :: term(),
       Result  :: term().
-foldr(Fun, Initial, Trie) ->
+foldr_node(Fun, Initial, Trie) ->
     foldr_node([], Fun, Initial, Trie#?TRIE.root, Trie#?TRIE.opts).
 
 %% @doc 木のルートノードを取得する
@@ -332,27 +358,21 @@ empty_node(Opts) ->
 -spec get_leaf(trie_node()) -> leaf().
 get_leaf({node, _, Leaf, _}) -> Leaf.
 
--spec foldl_node(key(), fold_fun(), Acc, trie_node(), #opt{}) -> Acc when Acc :: term().
-foldl_node(Key, Fun, Acc0, {node, _, MaybeValue, Children}, Options) ->
-    Acc1 = case MaybeValue of
-               error       -> Acc0;
-               {ok, Value} -> Fun(Key, Value, Acc0)
-           end,
+-spec foldl_node(key(), fold_node_fun(), Acc, trie_node(), #opt{}) -> Acc when Acc :: term().
+foldl_node(Key, Fun, Acc0, Node, Options) ->
+    Acc1 = Fun(Key, Node, Acc0),
     lists:foldl(fun ({Last, Child}, Acc2) ->
                         foldl_node(Key ++ [Last], Fun, Acc2, Child, Options)
                 end,
                 Acc1,
-                ?CHILDREN(Options):to_list(Children)).
+                ?CHILDREN(Options):to_list(get_children(Node))).
 
 -spec foldr_node(key(), fold_fun(), Acc, trie_node(), #opt{}) -> Acc when Acc :: term().
-foldr_node(Key, Fun, Acc0, {node, _, MaybeValue, Children}, Options) ->
+foldr_node(Key, Fun, Acc0, Node, Options) ->
     Acc2 =
         lists:foldr(fun ({Last, Child}, Acc1) ->
                             foldr_node(Key ++ [Last], Fun, Acc1, Child, Options)
                     end,
                     Acc0,
-                    ?CHILDREN(Options):to_list(Children)),
-    case MaybeValue of
-        error       -> Acc2;
-        {ok, Value} -> Fun(Key, Value, Acc2)
-    end.
+                    ?CHILDREN(Options):to_list(get_children(Node))),
+    Fun(Key, Node, Acc2).

@@ -42,6 +42,18 @@ fold_fun() = fun((<a href="#type-key">key()</a>, <a href="#type-value">value()</
 
 
 
+### <a name="type-fold_node_fun">fold_node_fun()</a> ###
+
+
+
+<pre><code>
+fold_node_fun() = fun((<a href="#type-key">key()</a>, <a href="#type-trie_node">trie_node()</a>, Acc::term()) -&gt; NextAcc::term())
+</code></pre>
+
+
+
+
+
 ### <a name="type-key">key()</a> ###
 
 
@@ -194,7 +206,7 @@ value() = term()
 ## Function Index ##
 
 
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#children_to_list-2">children_to_list/2</a></td><td>子ノード群を連想リスト形式に変換する.</td></tr><tr><td valign="top"><a href="#erase-2">erase/2</a></td><td><code>Trie</code>内の<code>Key</code>に対応するノードの値を削除する.</td></tr><tr><td valign="top"><a href="#find-2">find/2</a></td><td><code>Trie</code>内の<code>Key</code>に対応するノードの値を検索する.</td></tr><tr><td valign="top"><a href="#find_memo-2">find_memo/2</a></td><td><code>Trie</code>内の<code>Key</code>に対応するノードのメモ情報を検索する.</td></tr><tr><td valign="top"><a href="#find_node-2">find_node/2</a></td><td><code>Trie</code>内の<code>Key</code>に対応するノードを検索する.</td></tr><tr><td valign="top"><a href="#foldl-3">foldl/3</a></td><td>トライ木内の要素を左端から順番に畳み込む.</td></tr><tr><td valign="top"><a href="#foldr-3">foldr/3</a></td><td>トライ木内の要素を右端から順番に畳み込む.</td></tr><tr><td valign="top"><a href="#from_list-2">from_list/2</a></td><td>連想リストからトライ木を生成する.</td></tr><tr><td valign="top"><a href="#get_children-1">get_children/1</a></td><td>ノードの子ノード群を取得する.</td></tr><tr><td valign="top"><a href="#get_memo-1">get_memo/1</a></td><td>ノードからメモ情報を取り出す.</td></tr><tr><td valign="top"><a href="#get_root_node-1">get_root_node/1</a></td><td>木のルートノードを取得する.</td></tr><tr><td valign="top"><a href="#get_value-1">get_value/1</a></td><td>ノードに格納されている値を取り出す.</td></tr><tr><td valign="top"><a href="#get_value-2">get_value/2</a></td><td>ノードに格納されている値を取り出す.</td></tr><tr><td valign="top"><a href="#is_empty-1">is_empty/1</a></td><td>トライ木が空かどうかを判定する.</td></tr><tr><td valign="top"><a href="#is_trie-1">is_trie/1</a></td><td>Tests if <code>Value</code> is a trie and returns <code>true</code> if so and <code>false</code> otherwise.</td></tr><tr><td valign="top"><a href="#memo_fun_identity-1">memo_fun_identity/1</a></td><td>デフォルトで使用されるメモ関数.</td></tr><tr><td valign="top"><a href="#new-1">new/1</a></td><td>新しいトライ木を生成する.</td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td>トライ木に格納されている要素の数を取得する.</td></tr><tr><td valign="top"><a href="#store-3">store/3</a></td><td><code>Trie</code>内の<code>Key</code>に対応する地点に<code>Value</code>を格納する.</td></tr><tr><td valign="top"><a href="#subtrie-2">subtrie/2</a></td><td><code>Trie</code>内の<code>Key</code>に対応する地点のサブトライ木を取り出す.</td></tr><tr><td valign="top"><a href="#to_list-1">to_list/1</a></td><td>トライ木から連想リストを生成する.</td></tr></table>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#children_to_list-2">children_to_list/2</a></td><td>子ノード群を連想リスト形式に変換する.</td></tr><tr><td valign="top"><a href="#erase-2">erase/2</a></td><td><code>Trie</code>内の<code>Key</code>に対応するノードの値を削除する.</td></tr><tr><td valign="top"><a href="#find-2">find/2</a></td><td><code>Trie</code>内の<code>Key</code>に対応するノードの値を検索する.</td></tr><tr><td valign="top"><a href="#find_memo-2">find_memo/2</a></td><td><code>Trie</code>内の<code>Key</code>に対応するノードのメモ情報を検索する.</td></tr><tr><td valign="top"><a href="#find_node-2">find_node/2</a></td><td><code>Trie</code>内の<code>Key</code>に対応するノードを検索する.</td></tr><tr><td valign="top"><a href="#foldl-3">foldl/3</a></td><td>トライ木内の要素をキーが小さい順に畳み込む.</td></tr><tr><td valign="top"><a href="#foldl_node-3">foldl_node/3</a></td><td>トライ木内のノードをキーが小さい順に畳み込む.</td></tr><tr><td valign="top"><a href="#foldr-3">foldr/3</a></td><td>トライ木内の要素をキーが大きい順に畳み込む.</td></tr><tr><td valign="top"><a href="#foldr_node-3">foldr_node/3</a></td><td>トライ木内のノードをキーが大きい順に畳み込む.</td></tr><tr><td valign="top"><a href="#from_list-2">from_list/2</a></td><td>連想リストからトライ木を生成する.</td></tr><tr><td valign="top"><a href="#get_children-1">get_children/1</a></td><td>ノードの子ノード群を取得する.</td></tr><tr><td valign="top"><a href="#get_memo-1">get_memo/1</a></td><td>ノードからメモ情報を取り出す.</td></tr><tr><td valign="top"><a href="#get_root_node-1">get_root_node/1</a></td><td>木のルートノードを取得する.</td></tr><tr><td valign="top"><a href="#get_value-1">get_value/1</a></td><td>ノードに格納されている値を取り出す.</td></tr><tr><td valign="top"><a href="#get_value-2">get_value/2</a></td><td>ノードに格納されている値を取り出す.</td></tr><tr><td valign="top"><a href="#is_empty-1">is_empty/1</a></td><td>トライ木が空かどうかを判定する.</td></tr><tr><td valign="top"><a href="#is_trie-1">is_trie/1</a></td><td>Tests if <code>Value</code> is a trie and returns <code>true</code> if so and <code>false</code> otherwise.</td></tr><tr><td valign="top"><a href="#memo_fun_identity-1">memo_fun_identity/1</a></td><td>デフォルトで使用されるメモ関数.</td></tr><tr><td valign="top"><a href="#new-1">new/1</a></td><td>新しいトライ木を生成する.</td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td>トライ木に格納されている要素の数を取得する.</td></tr><tr><td valign="top"><a href="#store-3">store/3</a></td><td><code>Trie</code>内の<code>Key</code>に対応する地点に<code>Value</code>を格納する.</td></tr><tr><td valign="top"><a href="#subtrie-2">subtrie/2</a></td><td><code>Trie</code>内の<code>Key</code>に対応する地点のサブトライ木を取り出す.</td></tr><tr><td valign="top"><a href="#to_list-1">to_list/1</a></td><td>トライ木から連想リストを生成する.</td></tr></table>
 
 
 <a name="functions"></a>
@@ -262,24 +274,48 @@ find_node(Key::<a href="#type-key">key()</a>, Trie::<a href="#type-trie">trie()<
 
 
 <pre><code>
-foldl(Fun::<a href="#type-fold_fun">fold_fun()</a>, Initial, Trie::<a href="#type-trie">trie()</a>) -&gt; Result
+foldl(Fun, Initial, Trie::<a href="#type-trie">trie()</a>) -&gt; Result
+</code></pre>
+
+<ul class="definitions"><li><code>Fun = <a href="#type-fold_fun">fold_fun()</a></code></li><li><code>Initial = term()</code></li><li><code>Result = term()</code></li></ul>
+
+トライ木内の要素をキーが小さい順に畳み込む
+<a name="foldl_node-3"></a>
+
+### foldl_node/3 ###
+
+
+<pre><code>
+foldl_node(Fun::<a href="#type-fold_node_fun">fold_node_fun()</a>, Initial, Trie::<a href="#type-trie">trie()</a>) -&gt; Result
 </code></pre>
 
 <ul class="definitions"><li><code>Initial = term()</code></li><li><code>Result = term()</code></li></ul>
 
-トライ木内の要素を左端から順番に畳み込む
+トライ木内のノードをキーが小さい順に畳み込む
 <a name="foldr-3"></a>
 
 ### foldr/3 ###
 
 
 <pre><code>
-foldr(Fun::<a href="#type-fold_fun">fold_fun()</a>, Initial, Trie::<a href="#type-trie">trie()</a>) -&gt; Result
+foldr(Fun, Initial, Trie::<a href="#type-trie">trie()</a>) -&gt; Result
+</code></pre>
+
+<ul class="definitions"><li><code>Fun = <a href="#type-fold_fun">fold_fun()</a></code></li><li><code>Initial = term()</code></li><li><code>Result = term()</code></li></ul>
+
+トライ木内の要素をキーが大きい順に畳み込む
+<a name="foldr_node-3"></a>
+
+### foldr_node/3 ###
+
+
+<pre><code>
+foldr_node(Fun::<a href="#type-fold_node_fun">fold_node_fun()</a>, Initial, Trie::<a href="#type-trie">trie()</a>) -&gt; Result
 </code></pre>
 
 <ul class="definitions"><li><code>Initial = term()</code></li><li><code>Result = term()</code></li></ul>
 
-トライ木内の要素を右端から順番に畳み込む
+トライ木内のノードをキーが大きい順に畳み込む
 <a name="from_list-2"></a>
 
 ### from_list/2 ###
