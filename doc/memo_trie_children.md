@@ -47,7 +47,7 @@ children_module() = module()
 
 
 <pre><code>
-key() = <a href="memo_trie.md#type-key_component">memo_trie:key_component()</a>
+key() = <a href="memo_trie.md#type-node_name">memo_trie:node_name()</a>
 </code></pre>
 
 

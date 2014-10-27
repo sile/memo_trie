@@ -59,24 +59,10 @@ fold_node_fun() = fun((<a href="#type-key">key()</a>, <a href="#type-trie_node">
 
 
 <pre><code>
-key() = [<a href="#type-key_component">key_component()</a>]
+key() = [<a href="#type-node_name">node_name()</a>]
 </code></pre>
 
 
-
-
-
-### <a name="type-key_component">key_component()</a> ###
-
-
-
-<pre><code>
-key_component() = term()
-</code></pre>
-
-
-
- XXX: wrong name
 
 
 
@@ -135,7 +121,7 @@ memo() = term()
 
 
 <pre><code>
-memo_event() = {insert_value, NewValue::<a href="#type-value">value()</a>, NodeMemo::<a href="#type-memo">memo()</a>} | {update_value, {OldValue::<a href="#type-value">value()</a>, NewValue::<a href="#type-value">value()</a>}, NodeMemo::<a href="#type-memo">memo()</a>} | {delete_value, OldValue::<a href="#type-value">value()</a>, NodeMemo::<a href="#type-memo">memo()</a>} | {insert_child, {<a href="#type-key_component">key_component()</a>, NewChildMemo::<a href="#type-memo">memo()</a>}, NodeMemo::<a href="#type-memo">memo()</a>} | {update_child, {<a href="#type-key_component">key_component()</a>, OldChildMemo::<a href="#type-memo">memo()</a>, NewChildMemo::<a href="#type-memo">memo()</a>}, NodeMemo::<a href="#type-memo">memo()</a>} | {delete_child, {<a href="#type-key_component">key_component()</a>, OldChildMemo::<a href="#type-memo">memo()</a>}, NodeMemo::<a href="#type-memo">memo()</a>}
+memo_event() = {insert_value, NewValue::<a href="#type-value">value()</a>, NodeMemo::<a href="#type-memo">memo()</a>} | {update_value, {OldValue::<a href="#type-value">value()</a>, NewValue::<a href="#type-value">value()</a>}, NodeMemo::<a href="#type-memo">memo()</a>} | {delete_value, OldValue::<a href="#type-value">value()</a>, NodeMemo::<a href="#type-memo">memo()</a>} | {insert_child, {<a href="#type-node_name">node_name()</a>, NewChildMemo::<a href="#type-memo">memo()</a>}, NodeMemo::<a href="#type-memo">memo()</a>} | {update_child, {<a href="#type-node_name">node_name()</a>, OldChildMemo::<a href="#type-memo">memo()</a>, NewChildMemo::<a href="#type-memo">memo()</a>}, NodeMemo::<a href="#type-memo">memo()</a>} | {delete_child, {<a href="#type-node_name">node_name()</a>, OldChildMemo::<a href="#type-memo">memo()</a>}, NodeMemo::<a href="#type-memo">memo()</a>}
 </code></pre>
 
 
@@ -148,6 +134,18 @@ memo_event() = {insert_value, NewValue::<a href="#type-value">value()</a>, NodeM
 
 <pre><code>
 memo_fun() = fun((<a href="#type-memo_event">memo_event()</a>) -&gt; <a href="#type-memo">memo()</a>)
+</code></pre>
+
+
+
+
+
+### <a name="type-node_name">node_name()</a> ###
+
+
+
+<pre><code>
+node_name() = term()
 </code></pre>
 
 
@@ -219,7 +217,7 @@ value() = term()
 
 
 <pre><code>
-children_to_list(Children::<a href="#type-children">children()</a>, Trie::<a href="#type-trie">trie()</a>) -&gt; [{<a href="#type-key_component">key_component()</a>, <a href="#type-trie_node">trie_node()</a>}]
+children_to_list(Children::<a href="#type-children">children()</a>, Trie::<a href="#type-trie">trie()</a>) -&gt; [{<a href="#type-node_name">node_name()</a>, <a href="#type-trie_node">trie_node()</a>}]
 </code></pre>
 <br />
 

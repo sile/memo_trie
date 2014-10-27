@@ -37,7 +37,7 @@
               trie/0, trie/2,
               trie_node/0,
               key/0,
-              key_component/0,
+              node_name/0,
               value/0,
               make_opt/0, make_opts/0,
               fold_fun/0,
@@ -70,8 +70,8 @@
 -type trie(_Key, _Value) :: #?TRIE{}.
 %% -opaque trie(_Key, _Value) :: #?TRIE{}. % dialyzer(R16B03) says 'Polymorphic opaque types not supported yet'
 
--type key() :: [key_component()].
--type key_component() :: term().  % XXX: wrong name
+-type key() :: [node_name()].
+-type node_name() :: term().
 -type value() :: term().
 
 -type memo() :: term().
@@ -81,9 +81,9 @@
 -type memo_event() :: {insert_value, NewValue::value(),                      NodeMemo::memo()}
                     | {update_value, {OldValue::value(), NewValue::value()}, NodeMemo::memo()}
                     | {delete_value, OldValue::value(),                      NodeMemo::memo()}
-                    | {insert_child, {key_component(), NewChildMemo::memo()},                       NodeMemo::memo()}
-                    | {update_child, {key_component(), OldChildMemo::memo(), NewChildMemo::memo()}, NodeMemo::memo()}
-                    | {delete_child, {key_component(), OldChildMemo::memo()},                       NodeMemo::memo()}.
+                    | {insert_child, {node_name(), NewChildMemo::memo()},                       NodeMemo::memo()}
+                    | {update_child, {node_name(), OldChildMemo::memo(), NewChildMemo::memo()}, NodeMemo::memo()}
+                    | {delete_child, {node_name(), OldChildMemo::memo()},                       NodeMemo::memo()}.
 
 -type trie_node() :: {node, memo(), leaf(), children()}.
 
@@ -248,7 +248,7 @@ get_value(Node, Default) ->
 get_children({node, _, _, Children}) -> Children.
 
 %% @doc 子ノード群を連想リスト形式に変換する
--spec children_to_list(children(), trie()) -> [{key_component(), trie_node()}].
+-spec children_to_list(children(), trie()) -> [{node_name(), trie_node()}].
 children_to_list(Children, Trie) ->
     ?CHILDREN(Trie#?TRIE.opts):to_list(Children).
 
@@ -297,7 +297,7 @@ erase_node([Head | Tail], Node, Options) ->
 is_empty_node({node, _, Value, Children}, Options) ->
     Value =:= error andalso ?CHILDREN(Options):is_empty(Children).
 
--spec delete_child(key_component(), trie_node(), #opt{}) -> trie_node().
+-spec delete_child(node_name(), trie_node(), #opt{}) -> trie_node().
 delete_child(Key, Node, Options) ->
     {ok, Child, Children} = ?CHILDREN(Options):take(Key, get_children(Node)),
     case get_leaf(Node) =:= error andalso ?CHILDREN(Options):is_empty(Children) of
@@ -341,12 +341,12 @@ store_value(Value, Node, Options) ->
            end,
     {node, Memo, {ok, Value}, get_children(Node)}.
 
--spec insert_child(key_component(), trie_node(), trie_node(), #opt{}) -> trie_node().
+-spec insert_child(node_name(), trie_node(), trie_node(), #opt{}) -> trie_node().
 insert_child(Key, Child, Node, Options) ->
     Memo = (Options#opt.memo_fun)({insert_child, {Key, get_memo(Child)}, get_memo(Node)}),
     {node, Memo, get_leaf(Node), ?CHILDREN(Options):store(Key, Child, get_children(Node))}.
 
--spec update_child(key_component(), trie_node(), trie_node(), trie_node(), #opt{}) -> trie_node().
+-spec update_child(node_name(), trie_node(), trie_node(), trie_node(), #opt{}) -> trie_node().
 update_child(Key, Old, Child, Node, Options) ->
     Memo = (Options#opt.memo_fun)({update_child, {Key, get_memo(Old), get_memo(Child)}, get_memo(Node)}),
     {node, Memo, get_leaf(Node), ?CHILDREN(Options):store(Key, Child, get_children(Node))}.
